@@ -1,0 +1,82 @@
+<launch>
+  <!-- Robot spawn arguments -->
+  <arg name="x" default="0" />
+  <arg name="y" default="0" />
+  <arg name="z" default="0.4" />
+  <arg name="yaw" default="0" />
+
+  <!-- World -->
+  <arg name="world_filepath" default="$(find jackal_gazebo)/worlds/cafe_world_01.world" />
+
+  <!-- Start Gazebo -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="debug" value="0" />
+    <arg name="gui" value="true" />
+    <arg name="use_sim_time" value="true" />
+    <arg name="world_name" value="$(arg world_filepath)" />
+  </include>
+
+  <!-- Spawn Jackal robot -->
+  <include file="$(find jackal_gazebo)/launch/spawn_jackal.launch">
+    <arg name="x" value="$(arg x)" />
+    <arg name="y" value="$(arg y)" />
+    <arg name="z" value="$(arg z)" />
+    <arg name="yaw" value="$(arg yaw)" />
+    <arg name="config" value="front_laser" />
+    <arg name="joystick" value="true" />
+    <arg name="keyboard" value="true" />
+    <arg name="enable_ekf" value="false" />
+  </include>
+
+  <arg name="gazebo_odom_topic" default="/gazebo_p3d/odom" />
+  <!-- Publish odom → base_link from Gazebo P3D -->
+  <node pkg="gazebo_p3d_utils" type="p3d_link_tf"
+        name="link_odom_to_base_link" output="log">
+    <remap from="~input" to="$(arg gazebo_odom_topic)"/>
+    <param name="parent_frame_id" value="odom"/>
+  </node>
+
+  <!-- slam hector as mapping and localization does not use external odom-->
+  <include file="$(find jackal_gazebo)/launch/jackal_hector_map.launch">
+      <arg name="scan_topic" default="front/scan" />
+      <arg name="map_frame"  default="map"/>
+      <arg name="odom_frame" default="odom"/>
+      <arg name="base_frame" default="base_link"/>
+      
+      <arg name="map_size" value="511" />
+      <arg name="map_resolution" value="0.1" />
+      <arg name="map_start_x" value="0.5" />
+      <arg name="map_start_y" value="0.5" />
+      <arg name="pub_map_odom_transform" default="true"/>
+      <arg name="scan_subscriber_queue_size" default="5"/>
+  </include>
+
+  <!-- Launch RViz (default config) -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find jackal_gazebo)/rviz/jackal_rl.rviz" />
+
+  <!-- arguments for moving obstacle setup -->
+    <arg name="mov_obs" default="true"/>
+    <arg name="virtual_movobs" default="true"/>
+  <!--- moving obstacle info node -->
+    <include file="$(find rl_moving_obstacle)/launch/mov_obs_info.launch">
+        <arg name="virtual" value="$(arg virtual_movobs)" />
+        <!-- define moving obstacle set radius -->
+        <arg name="mo1_radius" value="0.3" />
+        <arg name="mo2_radius" value="0.3" />
+        <!-- define virtual moving obstacle start & goal position -->
+        <arg name="mo1_pstart_x" value="1.0" />
+        <arg name="mo1_pstart_y" value="2.0" />
+        <arg name="mo1_pgoal_x" value="3.0" />
+        <arg name="mo1_pgoal_y" value="6.0" />
+        <arg name="mo2_pstart_x" value="1.0" />
+        <arg name="mo2_pstart_y" value="-1.0" />
+        <arg name="mo2_pgoal_x" value="1.0" />
+        <arg name="mo2_pgoal_y" value="-3.0" />
+        <!-- define virtual moving obstacle velocity -->
+        <arg name="mo1_v" value="0.2" />
+        <arg name="mo2_v" value="0.2" />
+
+    </include>
+
+
+</launch>
